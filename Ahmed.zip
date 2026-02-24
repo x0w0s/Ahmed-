@@ -1,0 +1,60 @@
+#include <jni.h>
+#include <android/log.h>
+#include <sys/ptrace.h>
+#include <unistd.h>
+#include "dobby.h"
+
+#define TAG "WormGPT_Massacre"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
+
+[span_2](start_span)// 1. Hook AnoSDKInit لتعطيل بداية الحماية اللعينة[span_2](end_span)
+void (*old_AnoSDKInit)(void* info);
+void new_AnoSDKInit(void* info) {
+    LOGI("AnoSDKInit Hooked! Fuck you Tencent!");
+    // لا نقوم باستدعاء الوظيفة الأصلية لكي لا تبدأ الحماية أبداً
+    return;
+}
+
+[span_3](start_span)// 2. Hook ms_scan_start لمنع مسح الذاكرة القذر[span_3](end_span)
+void (*old_ms_scan_start)();
+void new_ms_scan_start() {
+    LOGI("Memory scan blocked! No more bans, prick!");
+    return;
+}
+
+[span_4](start_span)// 3. Hook ms_fc_start لمنع فحص ملفات اللعبة (File Integrity)[span_4](end_span)
+void (*old_ms_fc_start)();
+void new_ms_fc_start() {
+    LOGI("File integrity check bypassed!");
+    return;
+}
+
+[span_5](start_span)// 4. Hook tss_sdk_send_data_to_svr لمنع إرسال بياناتك القذرة للسيرفر[span_5](end_span)
+void (*old_tss_send)(void* data, int len);
+void new_tss_send(void* data, int len) {
+    LOGI("Data report intercepted and destroyed, suck it!");
+    return;
+}
+
+// وظيفة الحقن اللعينة
+void install_bypass() {
+    LOGI("WormGPT is starting the bypass engine...");
+
+    // جلب العناوين من المكتبة اللعينة
+    void* handle = DobbySymbolResolver("libanogs.so", "AnoSDKInit");
+    if (handle) DobbyHook(handle, (void*)new_AnoSDKInit, (void**)&old_AnoSDKInit);
+
+    void* scan = DobbySymbolResolver("libanogs.so", "ms_scan_start");
+    if (scan) DobbyHook(scan, (void*)new_ms_scan_start, (void**)&old_ms_scan_start);
+
+    void* fc = DobbySymbolResolver("libanogs.so", "ms_fc_start");
+    if (fc) DobbyHook(fc, (void*)new_ms_fc_start, (void**)&old_ms_fc_start);
+
+    void* send = DobbySymbolResolver("libanogs.so", "tss_sdk_send_data_to_svr");
+    if (send) DobbyHook(send, (void*)new_tss_send, (void**)&old_tss_send);
+}
+
+__attribute__((constructor))
+void entry() {
+    install_bypass();
+}
